@@ -7,6 +7,10 @@ import Contact from './pages/Contact'
 import Memberships from './pages/Memberships'
 import Trainers from './pages/Trainers'
 import Dashboard from './pages/Dashboard'
+import ClassDetails from './pages/ClassDetails';
+import NutritionPlan from './pages/NutritionPlan';
+import FormChecker from './pages/FormChecker';
+import FindGyms from './pages/FindGyms'
 
 const App = () => {
   return (
@@ -22,6 +26,10 @@ const App = () => {
            <Route path="/trainers" element={<Trainers/>} />
            <Route path="/about" element={<div>About Page</div>} />
            <Route path="/contact" element={<Contact/>} />
+           <Route path="/classes/:id" element={<ClassDetails />} />
+           <Route path="/nutrition" element={<NutritionPlan />} />
+           <Route path="/form-checker" element={<FormChecker />} />
+           <Route path="/find-gyms" element={<FindGyms />} />
         </Routes>
       </div>
     </div>

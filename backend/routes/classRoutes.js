@@ -234,10 +234,10 @@ router.delete('/booking/:bookingId/cancel', protect, async (req, res) => {
 
         //Remove the user from the class enrolled count
         const classData = await Class.findById(booking.classId);
-        classData.enrolled = classData.enrolled.filter(
-            (id) => id.toString() !== req.user._id.toString()
-        );
-        await classData.save();
+        if (classData) {
+            classData.enrolledCount = Math.max(0, (classData.enrolledCount || 0) - 1);
+            await classData.save();
+        }
 
         res.status(200).json({ success: true, message: "Booking cancelled successfully" });
     }

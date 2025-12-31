@@ -1,24 +1,40 @@
-// routes/subscriptionRoutes.js
 import express from "express";
-import Membership from "../models/Memberships.js"; // Your membership model
-import User from "../models/User.js"; // Your user model
+import Membership from "../models/Memberships.js";
+import { protect } from "../middleware/authMiddleware.js"; // Import protect middleware
 
 const router = express.Router();
 
-// Route to handle membership subscription
-router.post("/create-checkout-session", async (req, res) => {
-  const { userId, membershipName, membershipPrice } = req.body;
+// Route to handle membership subscription - NOW PROTECTED
+router.post("/create-checkout-session", protect, async (req, res) => {
+  const { membershipName, membershipPrice, forceCreate } = req.body;
   const stripe = req.app.get('stripe');
+  
+  const userId = req.user._id;
 
   try {
-    const existing = await Membership.findOne({userId, status: "active"});
-    if(existing) {
-      if (existing.membershipName === membershipName) {
-        return res.status(400).json({ error: "User already subscribed to this membership" });
-      }
+    const existingMembership = await Membership.findOne({
+      userId, 
+      status: "active"
+    });
+
+    if (existingMembership && !forceCreate) {
+      // User already has an active membership
+      return res.status(200).json({ 
+        hasActiveMembership: true,
+        currentMembership: {
+          name: existingMembership.membershipName,
+          price: existingMembership.membershipPrice
+        }
+      });
     }
 
-    //Creating Stripe Checkout Session
+    // If forceCreate is true, cancel the old membership here
+    if (existingMembership && forceCreate) {
+      existingMembership.status = "cancelled";
+      await existingMembership.save();
+    }
+
+    // Creating Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -49,7 +65,6 @@ router.post("/create-checkout-session", async (req, res) => {
     console.error("Error creating Stripe session:", error);
     res.status(500).json({ error: "There was an error creating the checkout session." });
   }
-
 });
 
 export default router;

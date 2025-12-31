@@ -75,7 +75,7 @@ export default function AboutAndAmenities() {
               About Our Gym
             </h2>
             <p className="text-gray-600 mb-4 text-lg leading-relaxed">
-              At MorrisvilleFit, we’re committed to helping you achieve your
+              At AI-Powered Fitness, we’re committed to helping you achieve your
               fitness goals. Our experienced trainers, modern equipment, and
               welcoming community make every workout effective and enjoyable.
             </p>

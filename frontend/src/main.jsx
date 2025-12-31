@@ -12,7 +12,12 @@ if (!PUBLISHABLE_KEY) {
 }
 
 createRoot(document.getElementById("root")).render(
-  <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+  <ClerkProvider 
+    publishableKey={PUBLISHABLE_KEY}
+    localization={{
+      locale: 'en-US'
+    }}
+  >
     <BrowserRouter>
       <App />
     </BrowserRouter>

@@ -11,7 +11,10 @@ const links = [
   { name: "Classes", path: "/classes" },
   { name: "Memberships", path: "/memberships" },
   { name: "Trainers", path: "/trainers" },
+  { name: "Nutrition", path: "/nutrition" },
   { name: "Contact", path: "/contact" },
+  { name: "Form Checker", path: "/form-checker" },
+  { name: "Find Gyms", path: "/find-gyms"}
 ];
 
 export default function Navbar() {

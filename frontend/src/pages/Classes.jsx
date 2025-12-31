@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react";
-import assets from "../assets/assets"; // Ensure you have images for each class
+import assets from "../assets/assets";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import  { useAuth, useUser } from "@clerk/clerk-react";
@@ -42,15 +42,11 @@ export default function Classes() {
         const { data } = await axios.get("http://localhost:3105/api/user/me", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        console.log("✅ User role fetched:", data?.user?.role);
         setUserRole(data?.user?.role);
       } catch (error) {
-        console.error("Error fetching user role:", error);
-
-        if (error.response?.status === 401) {
-          console.log("User not in database - defaulting to 'user' role");
-          setUserRole('user');
-      }
+          if (error.response?.status === 401) {
+            setUserRole('user');
+          }
       }
     };
 
@@ -59,57 +55,6 @@ export default function Classes() {
 
   // Check if user is admin based on database role
   const isAdmin = userRole === 'admin';
-
-  const classTemplates = [
-    {
-      name: "Yoga",
-      description: "A calming and meditative class that focuses on flexibility and mindfulness.",
-      image: assets.yoga,
-      schedule: { days: ["Monday", "Wednesday", "Friday"], time: "6:00 PM - 7:00 PM" },
-      instructor: "Sarah Johnson",
-      category: "yoga"
-    },
-    {
-      name: "Pilates",
-      description: "A low-impact workout focusing on core strength, flexibility, and posture.",
-      image: assets.pilatesnew,
-      schedule: { days: ["Tuesday", "Thursday"], time: "7:00 AM - 8:00 AM" },
-      instructor: "Emily Chen",
-      category: "pilates"
-    },
-    {
-      name: "Cardio",
-      description: "High-energy workout to get your heart pumping and improve cardiovascular health.",
-      image: assets.cardio,
-      schedule: { days: ["Monday", "Wednesday"], time: "7:00 AM - 8:00 AM" },
-      instructor: "Mike Rodriguez",
-      category: "cardio"
-    },
-    {
-      name: "Indoor Cycling",
-      description: "Spin your way to fitness in an indoor cycling class designed to improve endurance.",
-      image: assets.indoorcycling,
-      schedule: { days: ["Monday", "Friday"], time: "8:00 AM - 9:00 AM" },
-      instructor: "Jake Thompson",
-      category: "cycling"
-    },
-    {
-      name: "Strength Training",
-      description: "Build muscle and increase strength through weightlifting and resistance exercises.",
-      image: assets.strengthtraining,
-      schedule: { days: ["Tuesday", "Thursday", "Saturday"], time: "6:00 PM - 7:00 PM" },
-      instructor: "Alex Martinez",
-      category: "strength"
-    },
-    {
-      name: "Zumba",
-      description: "A fun dance workout that combines Latin and international music with dance moves.",
-      image: assets.zumba,
-      schedule: { days: ["Monday", "Wednesday"], time: "6:00 PM - 7:00 PM" },
-      instructor: "Maria Santos",
-      category: "dance"
-    },
-  ];
   
   useEffect(() => {
     fetchClasses();
@@ -118,41 +63,66 @@ export default function Classes() {
   const fetchClasses = async () => {
     try {
       const { data } = await axios.get("http://localhost:3105/api/classes");
-      const merge = data.classes.map(cls => {
-        const template = classTemplates.find(t => t.name === cls.name);
-        return {
-          ...cls,
-          image: template?.image || assets.defaultClassImage
-        };
-      });
-      setClasses(merge);
+      setClasses(data.classes);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching classes:", error);
-      setClasses(classTemplates);
       setLoading(false);
     }
   };
 
-  const handleBookClass = async (classId, className) => {
+  const getNextClassDate = (scheduleDays) => {
+    if (!scheduleDays || scheduleDays.length === 0) {
+      return null;
+    }
+
+    const today = new Date();
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayIndex = today.getDay();
+
+    for (let i = 0; i <= 7; i++) {
+      const checkDayIndex = (todayIndex + i) % 7;
+      const dayName = daysOfWeek[checkDayIndex];
+
+      if (scheduleDays.includes(dayName)) {
+        const nextDate = new Date();
+        nextDate.setDate(today.getDate() + i + 1);
+        return nextDate;
+      }
+    }
+    console.log("No matching day found in next 7 days");
+    return null;
+  }
+
+  const handleBookClass = async (classId, className, scheduleDays) => {
+    console.log("Full cls object:", classId);
+    console.log("Class Name:", className);
+    console.log("Schedule Days:", scheduleDays);
+
     if (!user) {
       alert("Please log in to book a class.");
       return;
     }
     try {
       const token = await getToken();
-      //Getting the next occurrence of the class
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const { data } = await axios.post(`http://localhost:3105/api/classes/${classId}/book`, 
-        { classDate: tomorrow.toISOString() },
+      const nextClassDate = getNextClassDate(scheduleDays);
+
+       console.log("Next Class Date:", nextClassDate);
+
+      if (!nextClassDate) {
+        alert("No upcoming class dates available for this class.");
+        return;
+      }
+
+      const { data } = await axios.post(
+        `http://localhost:3105/api/classes/${classId}/book`,
+        { classDate: nextClassDate.toISOString()}, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (data.success) {
-        alert(`Successfully booked ${className} class on ${tomorrow.toDateString()}`);
-        fetchClasses();      
+        alert(`Successfully booked ${className} on ${nextClassDate.toDateString()}`);
+        fetchClasses();
       }
     }
     catch (error) {
@@ -552,7 +522,7 @@ export default function Classes() {
                     // Regular users see Book and Details buttons
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleBookClass(cls._id, cls.name)}
+                        onClick={() => handleBookClass(cls._id, cls.name, cls.schedule.days)}
                         className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-semibold"
                       >
                         Book Class
@@ -574,79 +544,3 @@ export default function Classes() {
     </div>
   );
 }
-
-
-//   if (loading) {
-//     return (
-//       <div className="flex items-center justify-center min-h-screen">
-//         <div className="text-xl">Loading classes...</div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="w-full bg-gray-50">
-//       <section className="max-w-6xl mx-auto px-4 py-16">
-//         <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">
-//           Our Classes
-//         </h2>
-//         <p className="text-center text-gray-600 mb-12">
-//           Join our expert-led fitness classes designed for all levels
-//         </p>
-//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-//           {classes.map((cls, index) => (
-//             <div 
-//               key={cls._id || index} 
-//               className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300"
-//             >
-//               <img
-//                 src={cls.image}
-//                 alt={cls.name}
-//                 className="w-full h-48 object-cover"
-//               />
-//               <div className="p-6">
-//                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-//                   {cls.name}
-//                 </h3>
-//                 <p className="text-sm text-gray-500 mb-2">
-//                   with {cls.instructor}
-//                 </p>
-//                 <p className="text-gray-600 mb-4">
-//                   {cls.description}
-//                 </p>
-//                 <div className="mb-4">
-//                   <p className="text-sm font-medium text-gray-700 mb-1">Schedule:</p>
-//                   <p className="text-sm text-gray-600">
-//                     {cls.schedule.days?.join(", ")}
-//                   </p>
-//                   <p className="text-sm text-gray-600">{cls.schedule.time}</p>
-//                 </div>
-                
-//                 {cls.capacity && (
-//                   <p className="text-sm text-gray-500 mb-4">
-//                     {cls.capacity - (cls.enrolledCount?.length || 0)} spots available
-//                   </p>
-//                 )}
-
-//                 <div className="flex gap-2">
-//                   <button
-//                     onClick={() => handleBookClass(cls._id, cls.name)}
-//                     className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-semibold"
-//                   >
-//                     Book Class
-//                   </button>
-//                   <Link
-//                     to={`/classes/${cls._id}`}
-//                     className="flex-1 text-center bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-semibold"
-//                   >
-//                     Details
-//                   </Link>
-//                 </div>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </section>
-//     </div>
-//   );
-// }
